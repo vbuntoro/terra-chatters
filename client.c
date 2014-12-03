@@ -32,7 +32,7 @@ struct USER
 {
     int sockfd; // user's socket descriptor
     char alias[ALIASLEN]; // user's name
-    char password[PASSLEN]; //user's password
+    //char password[PASSLEN]; //user's password
 };
 
 struct THREADINFO
@@ -134,16 +134,16 @@ int main(int argc, char **argv)
             logout(&me);
         }
 
-        else if(!strncmp(option, "signup",6))
+        /*else if(!strncmp(option, "signup",6))
         {
-            signup(&me)
-        }
+            signup(&me);
+        }*/
         else fprintf(stderr, "Unknown option...\n");
     }
     return 0;
 }
 
-void signup(struct USER *me)
+/*void signup(struct USER *me)
 {
     int recvd; char input[LINEBUFF];
     if(isconnected)
@@ -175,8 +175,8 @@ void signup(struct USER *me)
     else
     {
         fprintf(stderr, "Connection rejected...\n");
-    }*/1
-}
+    }
+}*/
 
 void login(struct USER *me)
 {

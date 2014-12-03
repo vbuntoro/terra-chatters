@@ -320,6 +320,10 @@ void *client_handler(void *fd)
             pthread_mutex_unlock(&clientlist_mutex);
             break;
         }
+        else if(!strcmp(packet.option, "signup"))
+        {
+            //signup
+        }
         else
         {
             fprintf(stderr, "Garbage data from [%d] %s...\n", threadinfo.sockfd, threadinfo.alias);
