@@ -125,6 +125,7 @@ int sockfd, newfd;
 struct THREADINFO thread_info[CLIENTS];
 struct LLIST client_list;
 pthread_mutex_t clientlist_mutex;
+FILE * userlist;
 
 void *io_handler(void *param);
 void *client_handler(void *fd);
@@ -236,6 +237,7 @@ void *io_handler(void *param)
         else
         {
             fprintf(stderr, "Unknown command: %s...\n", option);
+
         }
     }
     return NULL;
@@ -322,7 +324,71 @@ void *client_handler(void *fd)
         }
         else if(!strcmp(packet.option, "signup"))
         {
+            pthread_mutex_lock(&clientlist_mutex); //make new mutex if deadlocked
             //signup
+            printf("creating new user..\n");
+            int userexist = 0;
+            userlist = fopen("userlist.txt","a+");
+            char username[ALIASLEN];
+            while(fscanf(userlist,"%s",username)>0)
+            {
+                if(!strcmp(packet.alias,username))
+                {
+                    //username already exists
+                    userexist = 1;
+                    break;
+                }
+            }
+            if(!userexist)
+            {
+                fprintf(userlist,"%s %s\n",packet.alias,packet.buff);
+                printf("created new user: %s\n",packet.alias);
+            }
+            else
+            {
+                printf("username %s already exist. Disconnecting..\n", packet.alias);
+                list_delete(&client_list, &threadinfo);
+                fclose(userlist);
+                pthread_mutex_unlock(&clientlist_mutex);
+                break;
+            }
+            fclose(userlist);
+            pthread_mutex_unlock(&clientlist_mutex);
+        }
+        else if(!strcmp(packet.option,"auth"))
+        {
+            char temp[32];
+            int authed = 0;
+            pthread_mutex_lock(&clientlist_mutex);
+            userlist = fopen("userlist.txt","r");
+            printf("authenticating..\n");
+            while(fscanf(userlist,"%s",&temp)>0)
+            {
+                if(!strcmp(temp,packet.alias))
+                {
+                    printf("user found!\n");
+                    fscanf(userlist,"%s",&temp);
+                    if(!strcmp(temp,packet.buff))
+                    {
+                        printf("%s password match!\n", packet.alias);
+                        authed = 1;
+                        break;
+                    }
+                    else
+                    {
+                        printf("%s password incorrect\n", packet.alias);
+                    }
+                }
+                else printf("user %s not found\n", packet.alias);
+            }
+            fclose(userlist);
+            if(!authed)
+            {
+                list_delete(&client_list, &threadinfo);
+                pthread_mutex_unlock(&clientlist_mutex);
+                break;
+            }
+            pthread_mutex_unlock(&clientlist_mutex);
         }
         else
         {
