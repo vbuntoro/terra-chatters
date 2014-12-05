@@ -1,0 +1,10 @@
+now: 2014-12-4 15:49:28
+Server starts
+Server starts[2014-12-4 15:49:36]
+kamu logged in[2014-12-4 15:49:42]
+kamu logged out[2014-12-4 15:49:44]
+hai logged in[2014-12-4 15:49:48]
+[2014-12-4 15:52:18]Server starts
+[2014-12-4 15:52:22]kamu logged in
+[2014-12-4 15:52:30]kamu logged out
+[2014-12-4 15:52:33]halo logged in

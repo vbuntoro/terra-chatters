@@ -12,8 +12,9 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+
 #define IP "127.0.0.1"
-#define PORT 8010
+#define PORT 8080
 #define BACKLOG 10
 #define CLIENTS 10
 
@@ -120,89 +121,24 @@ void list_dump(struct LLIST *ll)
     }
 }
 
-struct tm GetDateTime()
+void WriteToFile(char* message,char* filename)
 {
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
-    tm.tm_year = tm.tm_year + 1900;
-    tm.tm_mon = tm.tm_mon + 1;
-    return tm;
-}
-
-void WriteToFile(char* message1,char* message2,char* filename,int option)
-{
-	FILE *f = fopen(filename, "a");
+	FILE *f = fopen(filename, "w");
 	if (f == NULL)
 	{
-	    printf("File doen't exist!\nCreating file...%s\n",filename);
-	    f = fopen(filename, "wb");
-            exit(1);
+	    printf("Cannot open %s!\n",filename);
+	    exit(1);
 	}
-        fprintf(f,"[%d-%d-%d %d:%d:%d]", GetDateTime().tm_year, GetDateTime().tm_mon,GetDateTime().tm_mday,GetDateTime().tm_hour, GetDateTime().tm_min, GetDateTime().tm_sec);
-        if(option == 0) //Server logged in
-        {
-            fprintf(f,"Server starts\r\n");
-        }
-        else if(option == 1) //Someone logged in
-        {
-            fprintf(f,"%s logged in\r\n",message1);
-        }
-        else if(option == 2) //Someone disconnected from server
-        {
-            fprintf(f,"%s logged out\r\n",message1);
-        }
-        else if(option ==3) // Someone A messages B
-        {
-            fprintf(f,"%s messages %s\r\n",message1,message2);
-        }
-        else if(option ==4) //Someone created/join group
-        {
-            fprintf(f,"%s joined %s\r\n",message1,message2);
-        }
-        else if(option == 5) //Someone left the group
-        {
-            fprintf(f, "%s left %s\r\n",message1,message2);
-        }
-        fclose(f);
-}
 
+	/* print some text */
+	printf("Write into %s",filename);
 
-/*char* tostring(char* str, int num)
-{
-    int i, rem, len = 0, n;
-    n = num;
-    while (n != 0)
-    {
-        len++;
+	/* printing single chatacters */
+	fprintf(f, message);
 
-        n /= 10;
-    }
-    for (i = 0; i < len; i++)
-    {
-        rem = num % 10;
-
-        num = num / 10;
-
-        str[len - (i + 1)] = rem + '0';
-    }
-    str[len] = '\0';
-    return str;
+	fclose(f);
 
 }
-
-int toint(char str[])
-{
-    int len = strlen(str);
-    int i, num = 0;
-    for (i = 0; i < len; i++)
-    {
-
-        num = num + ((str[len - (i + 1)] - '0') * pow(10, i));
-
-    }
-   return num;
-
-}*/
 
 int sockfd, newfd;
 struct THREADINFO thread_info[CLIENTS];
@@ -256,8 +192,8 @@ int main(int argc, char **argv)
         return err_ret;
     }
 
-    printf("Server start\n");
-    WriteToFile("","","server_log.txt",0);
+    /* initiate interrupt handler for IO controlling */
+    printf("Server starts\n");
     if(pthread_create(&interrupt, NULL, io_handler, NULL) != 0)
     {
         err_ret = errno;
@@ -345,7 +281,11 @@ void *client_handler(void *fd)
         if(!strcmp(packet.option, "alias"))
         {
             printf("%s has logged-in", packet.alias);
-            WriteToFile(packet.alias,"","server_log.txt",1);
+		WriteActiveClient(packet.alias);
+		time_t t = time(NULL);
+		struct tm tm = *localtime(&t);
+
+		printf("%d-%d-%d %d:%d:%d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
             pthread_mutex_lock(&clientlist_mutex);
             for(curr = client_list.head; curr != NULL; curr = curr->next)
             {
@@ -398,8 +338,7 @@ void *client_handler(void *fd)
         }
         else if(!strcmp(packet.option, "exit"))
         {
-            printf("%s has logged out\n",packet.alias);
-            WriteToFile(threadinfo.alias,"","server_log.txt",2);
+            printf("[%d] %s has disconnected...\n", threadinfo.sockfd, threadinfo.alias);
             pthread_mutex_lock(&clientlist_mutex);
             list_delete(&client_list, &threadinfo);
             pthread_mutex_unlock(&clientlist_mutex);
