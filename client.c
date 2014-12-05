@@ -48,8 +48,8 @@ struct USER me;
 int connect_with_server();
 void setalias(struct USER *me);
 void logout(struct USER *me);
-void login(struct USER *me);
-void signup(struct USER *me);
+void login(struct USER *me, char* password);
+void signup(struct USER *me, char* password);
 void *receiver(void *param);
 void sendtoall(struct USER *me, char *msg);
 void sendtoalias(struct USER *me, char * target, char *msg);
@@ -93,7 +93,8 @@ int main(int argc, char **argv)
             {
                 strcpy(me.alias, "Anonymous");
             }
-            login(&me);
+            ptr = strtok(0, " ");
+            login(&me, ptr);
         }
         else if(!strncmp(option, "alias", 5))
         {
@@ -134,69 +135,97 @@ int main(int argc, char **argv)
             logout(&me);
         }
 
-        /*else if(!strncmp(option, "signup",6))
+        else if(!strncmp(option, "signup",6))
         {
-            signup(&me);
-        }*/
+            char *ptr = strtok(option, " ");
+            ptr = strtok(0, " ");
+            memset(me.alias, 0, sizeof(char) * ALIASLEN);
+            if(ptr != NULL)
+            {
+                aliaslen = strlen(ptr);
+                if(aliaslen > ALIASLEN) ptr[ALIASLEN] = 0;
+                strcpy(me.alias, ptr);
+                ptr = strtok(0, " ");
+                if(ptr != NULL)
+                {
+                    signup(&me,ptr);
+                }
+                else fprintf(stderr, "password needed!\n");
+            }
+            else
+            {
+                fprintf(stderr, "Username needed!\n");
+            }
+
+        }
         else fprintf(stderr, "Unknown option...\n");
     }
     return 0;
 }
 
-/*void signup(struct USER *me)
+void signup(struct USER *me, char* password)
 {
-    int recvd; char input[LINEBUFF];
-    if(isconnected)
-    {
-        fprintf(stderr, "You are already connected to server at %s:%d\n", SERVERIP, SERVERPORT);
-        return;
-    }
-    printf("Name     : ");
-    gets(input);
-    memset(me.alias, 0, sizeof(char) * ALIASLEN);
-    strcpy(me.alias,input);
-    printf("Password : ");
-    gets(input);
-    memset(me.password, 0, sizeof(char) * PASSLEN);
-    strcpy(me.password,input);
-    /*
-    sockfd = connect_with_server();
-    if(sockfd >= 0)
-    {
-        isconnected = 1;
-        me->sockfd = sockfd;
-        if(strcmp(me->alias, "Anonymous")) setalias(me);
-        printf("Logged in as %s\n", me->alias);
-        printf("Receiver started [%d]...\n", sockfd);
-        struct THREADINFO threadinfo;
-        pthread_create(&threadinfo.thread_ID, NULL, receiver, (void *)&threadinfo);
-
-    }
-    else
-    {
-        fprintf(stderr, "Connection rejected...\n");
-    }
-}*/
-
-void login(struct USER *me)
-{
+    int sent;
+    struct PACKET packet;
     int recvd;
     if(isconnected)
     {
         fprintf(stderr, "You are already connected to server at %s:%d\n", SERVERIP, SERVERPORT);
         return;
     }
+
     sockfd = connect_with_server();
     if(sockfd >= 0)
     {
         isconnected = 1;
         me->sockfd = sockfd;
-        if(strcmp(me->alias, "Anonymous")) setalias(me);
-        printf("Logged in as %s\n", me->alias);
+
         printf("Receiver started [%d]...\n", sockfd);
         struct THREADINFO threadinfo;
         pthread_create(&threadinfo.thread_ID, NULL, receiver, (void *)&threadinfo);
 
+        memset(&packet, 0, sizeof(struct PACKET));
+        strcpy(packet.option, "signup");
+        strcpy(packet.alias, me->alias);
+        strcpy(packet.buff, password);
+        sent = send(sockfd, (void *)&packet, sizeof(struct PACKET), 0);
+
+        if(strcmp(me->alias, "Anonymous")) setalias(me);
+        printf("Logged in as %s\n", me->alias);
+    }
+    else
+    {
+        fprintf(stderr, "Connection rejected...\n");
+    }
+}
+
+void login(struct USER *me, char* password)
+{
+    int recvd, sent;
+    struct PACKET packet;
+    if(isconnected)
+    {
+        fprintf(stderr, "You are already connected to server at %s:%d\n", SERVERIP, SERVERPORT);
+        return;
+    }
+    sockfd = connect_with_server();
+    if(sockfd >= 0)
+    {
+        isconnected = 1;
+        me->sockfd = sockfd;
+        printf("Receiver started [%d]...\n", sockfd);
+        struct THREADINFO threadinfo;
+        pthread_create(&threadinfo.thread_ID, NULL, receiver, (void *)&threadinfo);
+
+        printf("Authenticating.."\n);
+        memset(&packet, 0, sizeof(struct PACKET));
+        strcpy(packet.option, "auth");
+        strcpy(packet.alias, me->alias);
+        strcpy(packet.buff, password);
+        sent = send(sockfd, (void *)&packet, sizeof(struct PACKET), 0);
+
+        if(strcmp(me->alias, "Anonymous")) setalias(me);
+        printf("Logged in as %s\n", me->alias);
     }
     else
     {
